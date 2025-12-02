@@ -37,8 +37,14 @@ class TelegramBot:
         self.loop = loop
 
         try:
-            # Initialize the bot asynchronously
-            loop.run_until_complete(self._init_bot())
+            # Initialize the bot asynchronously with retry logic
+            while True:
+                try:
+                    loop.run_until_complete(self._init_bot())
+                    break # Success
+                except Exception as e:
+                    logger.error(f"Bot init failed (Network Issue?): {e}. Retrying in 5s...")
+                    time.sleep(5)
             
             # Run the loop forever to process updates and alerts
             loop.run_forever()

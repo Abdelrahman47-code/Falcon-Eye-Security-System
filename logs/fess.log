@@ -63,3 +63,80 @@
 2025-12-02 18:31:16.899 | INFO     | __main__:main:68 - System Ready. Press 'q' to exit.
 2025-12-02 18:46:25.716 | INFO     | __main__:main:114 - User interrupted system.
 2025-12-02 18:46:26.047 | INFO     | __main__:main:121 - System Shutdown Complete.
+2025-12-02 18:52:03.627 | INFO     | __main__:main:47 - Starting Falcon Eye Security System (FESS)...
+2025-12-02 18:52:03.630 | INFO     | src.notifier:start:27 - Telegram Bot thread started.
+2025-12-02 18:52:03.630 | INFO     | src.detector:__init__:9 - Loading YOLO model: yolov8n.pt
+2025-12-02 18:52:03.631 | INFO     | src.notifier:_init_bot:58 - Initializing Telegram Bot...
+2025-12-02 18:52:03.787 | INFO     | src.face_auth:_load_known_faces:35 - Loading known faces from known_faces...
+2025-12-02 18:52:04.475 | ERROR    | src.face_auth:_load_known_faces:54 - Error loading photo_2025-12-02_18-30-49.jpg: Unsupported image type, must be 8bit gray or RGB image.
+2025-12-02 18:52:04.476 | INFO     | src.face_auth:_load_known_faces:56 - Total known faces loaded: 0
+2025-12-02 18:52:04.477 | INFO     | __main__:main:60 - Connecting to camera source: 0
+2025-12-02 18:52:04.898 | INFO     | src.notifier:_init_bot:76 - 🦅 Telegram Bot is Online and Polling!
+2025-12-02 18:52:19.100 | INFO     | __main__:main:68 - System Ready. Press 'q' to exit.
+2025-12-02 18:52:53.023 | WARNING  | __main__:main:87 - CRITICAL SECURITY BREACH DETECTED!
+2025-12-02 18:52:53.639 | INFO     | src.notifier:arm_command:100 - System Armed via Telegram.
+2025-12-02 18:53:05.792 | INFO     | src.notifier:_send_alert_coroutine:123 - Alert sent to 869824962
+2025-12-02 18:53:23.577 | WARNING  | __main__:main:87 - CRITICAL SECURITY BREACH DETECTED!
+2025-12-02 18:53:25.141 | INFO     | src.notifier:_send_alert_coroutine:123 - Alert sent to 869824962
+2025-12-02 18:53:53.592 | WARNING  | __main__:main:87 - CRITICAL SECURITY BREACH DETECTED!
+2025-12-02 18:53:58.701 | ERROR    | src.notifier:_send_alert_coroutine:126 - Failed to send Telegram alert: Timed out
+2025-12-02 18:54:23.833 | WARNING  | __main__:main:87 - CRITICAL SECURITY BREACH DETECTED!
+2025-12-02 18:54:28.682 | ERROR    | src.notifier:_send_alert_coroutine:126 - Failed to send Telegram alert: httpx.ConnectError: 
+2025-12-02 18:54:38.393 | INFO     | __main__:main:121 - System Shutdown Complete.
+2025-12-02 18:59:54.486 | INFO     | __main__:main:47 - Starting Falcon Eye Security System (FESS)...
+2025-12-02 18:59:54.488 | INFO     | src.notifier:start:27 - Telegram Bot thread started.
+2025-12-02 18:59:54.489 | INFO     | src.detector:__init__:9 - Loading YOLO model: yolov8n.pt
+2025-12-02 18:59:54.489 | INFO     | src.notifier:_init_bot:64 - Initializing Telegram Bot...
+2025-12-02 18:59:54.614 | INFO     | src.face_auth:_load_known_faces:35 - Loading known faces from known_faces...
+2025-12-02 18:59:54.644 | ERROR    | src.face_auth:_load_known_faces:61 - Error loading photo_2025-12-02_18-30-49.jpg: Unsupported image type, must be 8bit gray or RGB image.
+2025-12-02 18:59:54.644 | INFO     | src.face_auth:_load_known_faces:63 - Total known faces loaded: 0
+2025-12-02 18:59:54.644 | INFO     | __main__:main:60 - Connecting to camera source: 0
+2025-12-02 18:59:55.740 | INFO     | src.notifier:_init_bot:82 - 🦅 Telegram Bot is Online and Polling!
+2025-12-02 19:00:04.036 | INFO     | __main__:main:68 - System Ready. Press 'q' to exit.
+2025-12-02 19:00:12.966 | WARNING  | __main__:main:87 - CRITICAL SECURITY BREACH DETECTED!
+2025-12-02 19:00:13.540 | INFO     | src.notifier:arm_command:106 - System Armed via Telegram.
+2025-12-02 19:00:14.420 | INFO     | src.notifier:_send_alert_coroutine:129 - Alert sent to 869824962
+2025-12-02 19:00:18.668 | INFO     | __main__:main:121 - System Shutdown Complete.
+2025-12-02 19:04:48.027 | INFO     | __main__:main:47 - Starting Falcon Eye Security System (FESS)...
+2025-12-02 19:04:48.030 | INFO     | src.notifier:start:27 - Telegram Bot thread started.
+2025-12-02 19:04:48.031 | INFO     | src.detector:__init__:9 - Loading YOLO model: yolov8n.pt
+2025-12-02 19:04:48.032 | INFO     | src.notifier:_init_bot:64 - Initializing Telegram Bot...
+2025-12-02 19:04:48.164 | INFO     | src.face_auth:_load_known_faces:35 - Loading known faces from known_faces...
+2025-12-02 19:04:48.199 | ERROR    | src.face_auth:_load_known_faces:77 - Error loading photo_2025-12-02_18-30-49.jpg: Unsupported image type, must be 8bit gray or RGB image.
+2025-12-02 19:04:48.200 | INFO     | src.face_auth:_load_known_faces:79 - Total known faces loaded: 0
+2025-12-02 19:04:48.201 | INFO     | __main__:main:60 - Connecting to camera source: 0
+2025-12-02 19:04:49.735 | INFO     | src.notifier:_init_bot:82 - 🦅 Telegram Bot is Online and Polling!
+2025-12-02 19:04:57.300 | INFO     | __main__:main:68 - System Ready. Press 'q' to exit.
+2025-12-02 19:05:01.981 | INFO     | __main__:main:121 - System Shutdown Complete.
+2025-12-02 19:10:10.111 | INFO     | __main__:main:47 - Starting Falcon Eye Security System (FESS)...
+2025-12-02 19:10:10.120 | INFO     | src.notifier:start:27 - Telegram Bot thread started.
+2025-12-02 19:10:10.120 | INFO     | src.detector:__init__:9 - Loading YOLO model: yolov8n.pt
+2025-12-02 19:10:10.120 | INFO     | src.notifier:_init_bot:64 - Initializing Telegram Bot...
+2025-12-02 19:10:10.287 | INFO     | src.face_auth:_load_known_faces:35 - Loading known faces from known_faces...
+2025-12-02 19:10:10.288 | INFO     | src.face_auth:_load_known_faces:79 - Total known faces loaded: 0
+2025-12-02 19:10:10.289 | INFO     | __main__:main:60 - Connecting to camera source: 0
+2025-12-02 19:10:14.638 | INFO     | src.notifier:_init_bot:82 - 🦅 Telegram Bot is Online and Polling!
+2025-12-02 19:10:26.999 | INFO     | __main__:main:68 - System Ready. Press 'q' to exit.
+2025-12-02 19:11:01.849 | INFO     | __main__:main:114 - User interrupted system.
+2025-12-02 19:11:02.198 | INFO     | __main__:main:121 - System Shutdown Complete.
+2025-12-02 19:12:11.782 | INFO     | __main__:main:47 - Starting Falcon Eye Security System (FESS)...
+2025-12-02 19:12:11.785 | INFO     | src.notifier:start:27 - Telegram Bot thread started.
+2025-12-02 19:12:11.788 | INFO     | src.detector:__init__:9 - Loading YOLO model: yolov8n.pt
+2025-12-02 19:12:11.790 | INFO     | src.notifier:_init_bot:64 - Initializing Telegram Bot...
+2025-12-02 19:12:12.048 | INFO     | src.face_auth:_load_known_faces:35 - Loading known faces from known_faces...
+2025-12-02 19:12:12.089 | ERROR    | src.face_auth:_load_known_faces:77 - Error loading photo_2025-12-02_18-30-49.jpg: Unsupported image type, must be 8bit gray or RGB image.
+2025-12-02 19:12:12.089 | INFO     | src.face_auth:_load_known_faces:79 - Total known faces loaded: 0
+2025-12-02 19:12:12.092 | INFO     | __main__:main:60 - Connecting to camera source: 0
+2025-12-02 19:12:12.577 | INFO     | src.notifier:_init_bot:82 - 🦅 Telegram Bot is Online and Polling!
+2025-12-02 19:12:27.658 | INFO     | __main__:main:68 - System Ready. Press 'q' to exit.
+2025-12-02 19:13:29.926 | INFO     | __main__:main:114 - User interrupted system.
+2025-12-02 19:13:30.241 | INFO     | __main__:main:121 - System Shutdown Complete.
+2025-12-02 19:15:48.372 | INFO     | __main__:main:47 - Starting Falcon Eye Security System (FESS)...
+2025-12-02 19:15:48.377 | INFO     | src.notifier:start:27 - Telegram Bot thread started.
+2025-12-02 19:15:48.377 | INFO     | src.detector:__init__:9 - Loading YOLO model: yolov8n.pt
+2025-12-02 19:15:48.381 | INFO     | src.notifier:_init_bot:64 - Initializing Telegram Bot...
+2025-12-02 19:15:48.676 | INFO     | src.face_auth:_load_known_faces:35 - Loading known faces from known_faces...
+2025-12-02 19:15:48.725 | ERROR    | src.face_auth:_load_known_faces:79 - Error loading photo_2025-12-02_18-30-49.jpg: Unsupported image type, must be 8bit gray or RGB image.
+2025-12-02 19:15:48.726 | INFO     | src.face_auth:_load_known_faces:81 - Total known faces loaded: 0
+2025-12-02 19:15:48.727 | INFO     | __main__:main:60 - Connecting to camera source: 0
+2025-12-02 19:15:49.447 | INFO     | src.notifier:_init_bot:82 - 🦅 Telegram Bot is Online and Polling!

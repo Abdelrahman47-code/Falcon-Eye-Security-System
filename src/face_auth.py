@@ -37,10 +37,35 @@ class FaceAuthenticator:
         for file_path in self.known_faces_dir.glob("*"):
             if file_path.suffix.lower() in ['.jpg', '.jpeg', '.png']:
                 try:
-                    # Load image
-                    image = face_recognition.load_image_file(str(file_path))
+                    # Load image using OpenCV
+                    img = cv2.imread(str(file_path), cv2.IMREAD_UNCHANGED)
+                    
+                    if img is None:
+                        logger.warning(f"Could not read image: {file_path.name}")
+                        continue
+                        
+                    # Handle different channel counts
+                    if len(img.shape) == 2:
+                        # Grayscale -> RGB
+                        rgb_image = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+                    elif img.shape[2] == 4:
+                        # BGRA -> RGB
+                        rgb_image = cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
+                    elif img.shape[2] == 3:
+                        # BGR -> RGB
+                        rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    else:
+                        logger.warning(f"Unsupported image format {file_path.name} with shape {img.shape}. Skipping.")
+                        continue
+                        
+                    # Ensure uint8 type and contiguous memory layout (Critical for dlib)
+                    if rgb_image.dtype != np.uint8:
+                        rgb_image = rgb_image.astype(np.uint8)
+                    
+                    rgb_image = np.ascontiguousarray(rgb_image)
+                    
                     # Encode face (assume one face per image)
-                    encodings = face_recognition.face_encodings(image)
+                    encodings = face_recognition.face_encodings(rgb_image)
                     
                     if encodings:
                         self.known_encodings.append(encodings[0])
