@@ -6,3 +6,5 @@ loguru
 cmake
 dlib
 face_recognition
+customtkinter
+Pillow

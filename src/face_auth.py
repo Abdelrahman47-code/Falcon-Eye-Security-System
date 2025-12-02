@@ -1,148 +1,96 @@
+import os
+import cv2
 try:
     import face_recognition
     FACE_REC_AVAILABLE = True
 except ImportError:
-    face_recognition = None
     FACE_REC_AVAILABLE = False
-
-import cv2
-import os
 import numpy as np
-from pathlib import Path
-from src.config import logger
+from loguru import logger
 
 class FaceAuthenticator:
-    def __init__(self, known_faces_dir="known_faces"):
-        self.known_encodings = []
-        self.known_names = []
-        self.known_faces_dir = Path(known_faces_dir)
-        
+    def __init__(self):
+        self.known_face_encodings = []
+        self.known_face_names = []
         if FACE_REC_AVAILABLE:
             self._load_known_faces()
         else:
-            logger.warning("Face Recognition library not available. Running in detection-only mode.")
+            logger.warning("Face Recognition library not installed.")
 
     def _load_known_faces(self):
-        """
-        Loads all .jpg and .png images from the known_faces directory
-        and encodes them for recognition.
-        """
-        if not self.known_faces_dir.exists():
-            logger.warning(f"Directory '{self.known_faces_dir}' not found. Creating it.")
-            self.known_faces_dir.mkdir(parents=True, exist_ok=True)
+        logger.info("Loading known faces from known_faces...")
+        if not os.path.exists("known_faces"):
+            os.makedirs("known_faces")
             return
 
-        logger.info(f"Loading known faces from {self.known_faces_dir}...")
-        
-        for file_path in self.known_faces_dir.glob("*"):
-            if file_path.suffix.lower() in ['.jpg', '.jpeg', '.png']:
+        for filename in os.listdir("known_faces"):
+            if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                filepath = os.path.join("known_faces", filename)
                 try:
-                    # Load image using OpenCV
-                    img = cv2.imread(str(file_path), cv2.IMREAD_UNCHANGED)
+                    # 1. قراءة الصورة بـ OpenCV
+                    img = cv2.imread(filepath)
                     
                     if img is None:
-                        logger.warning(f"Could not read image: {file_path.name}")
+                        logger.warning(f"Could not read {filename}")
                         continue
-                        
-                    # Handle different channel counts
-                    if len(img.shape) == 2:
-                        # Grayscale -> RGB
-                        rgb_image = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-                    elif img.shape[2] == 4:
-                        # BGRA -> RGB
-                        rgb_image = cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
-                    elif img.shape[2] == 3:
-                        # BGR -> RGB
-                        rgb_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+                    # 2. المعالجة السحرية (تصحيح الألوان)
+                    # لو الصورة فيها شفافية (4 قنوات)، شيل الشفافية
+                    if len(img.shape) > 2 and img.shape[2] == 4:
+                        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGRA2RGB)
                     else:
-                        logger.warning(f"Unsupported image format {file_path.name} with shape {img.shape}. Skipping.")
-                        continue
-                        
-                    # Ensure uint8 type and contiguous memory layout (Critical for dlib)
-                    if rgb_image.dtype != np.uint8:
-                        rgb_image = rgb_image.astype(np.uint8)
-                    
-                    rgb_image = np.ascontiguousarray(rgb_image)
-                    
-                    # Encode face (assume one face per image)
-                    encodings = face_recognition.face_encodings(rgb_image)
-                    
-                    if encodings:
-                        self.known_encodings.append(encodings[0])
-                        # Use filename (without extension) as the name
-                        name = file_path.stem.replace("_", " ").title()
-                        self.known_names.append(name)
-                        logger.info(f"Loaded face: {name}")
+                        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+                    # 3. خطوة هامة جداً: إجبار الصورة تكون 8-bit
+                    # ده بيحل مشكلة Unsupported image type
+                    rgb_img = np.array(rgb_img, dtype=np.uint8)
+
+                    # 4. استخراج البصمة
+                    encodings = face_recognition.face_encodings(rgb_img)
+
+                    if len(encodings) > 0:
+                        self.known_face_encodings.append(encodings[0])
+                        # تنظيف الاسم (شيل الامتداد والأرقام)
+                        name = os.path.splitext(filename)[0].split('_')[0]
+                        self.known_face_names.append(name)
+                        logger.success(f"Loaded: {name}")
                     else:
-                        logger.warning(f"No face found in {file_path.name}. Skipping.")
+                        logger.warning(f"No face found in {filename}")
+
                 except Exception as e:
-                    logger.error(f"Error loading {file_path.name}: {e}")
+                    logger.error(f"Error loading {filename}: {e}")
         
-        logger.info(f"Total known faces loaded: {len(self.known_names)}")
+        logger.info(f"Total known faces loaded: {len(self.known_face_names)}")
 
     def identify_face(self, frame, bbox):
-        """
-        Identifies a face within the given bounding box.
-        
-        Args:
-            frame: The full video frame (BGR).
-            bbox: Tuple (x1, y1, x2, y2).
+        if not FACE_REC_AVAILABLE or not self.known_face_encodings:
+            return "Unknown"
             
-        Returns:
-            name: The name of the identified person, or "Unknown".
-        """
-        if not FACE_REC_AVAILABLE:
-            return "Unknown"
-
-        if not self.known_encodings:
-            return "Unknown"
-
+        # Unpack bbox to match user's logic
         x1, y1, x2, y2 = bbox
-        
-        # Ensure bbox is within frame boundaries
-        h, w = frame.shape[:2]
-        x1, y1 = max(0, x1), max(0, y1)
-        x2, y2 = min(w, x2), min(h, y2)
-        
-        # Crop the face
-        face_img = frame[y1:y2, x1:x2]
-        
-        if face_img.size == 0:
-            return "Unknown"
 
-        # Convert BGR (OpenCV) to RGB (face_recognition)
-        rgb_face = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
-        
-        # Get encoding for the cropped face
-        # We pass the whole image but since we cropped it, we can just say the face is the whole image
-        # Or better, let face_recognition find it in the crop to be robust against loose bboxes
-        # However, finding faces is slow. Since we have the bbox, let's force it.
-        # face_encodings takes a list of locations [(top, right, bottom, left)]
-        # Since we cropped, the location is the whole crop: (0, width, height, 0)
-        face_h, face_w = face_img.shape[:2]
-        
         try:
-            # Attempt to encode the face directly from the crop
-            current_encodings = face_recognition.face_encodings(rgb_face, known_face_locations=[(0, face_w, face_h, 0)])
-            
-            if not current_encodings:
-                return "Unknown"
-                
-            current_encoding = current_encodings[0]
-            
-            # Compare with known faces
-            matches = face_recognition.compare_faces(self.known_encodings, current_encoding, tolerance=0.6)
-            name = "Unknown"
+            # قص الوجه
+            face_img = frame[y1:y2, x1:x2]
+            if face_img.size == 0: return "Unknown"
 
-            # Use the known face with the smallest distance to the new face
-            face_distances = face_recognition.face_distance(self.known_encodings, current_encoding)
-            best_match_index = np.argmin(face_distances)
+            # تحويل وتجهيز
+            rgb_face = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
+            rgb_face = np.array(rgb_face, dtype=np.uint8)
             
-            if matches[best_match_index]:
-                name = self.known_names[best_match_index]
-                
-            return name
+            # فحص سريع
+            face_encodings = face_recognition.face_encodings(rgb_face)
+            
+            if not face_encodings:
+                return "Unknown"
+            
+            # مقارنة
+            matches = face_recognition.compare_faces(self.known_face_encodings, face_encodings[0], tolerance=0.5)
+            if True in matches:
+                first_match_index = matches.index(True)
+                return self.known_face_names[first_match_index]
+            
+            return "Unknown"
 
         except Exception as e:
-            logger.error(f"Face recognition error: {e}")
             return "Unknown"
