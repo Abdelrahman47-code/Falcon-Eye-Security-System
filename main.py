@@ -163,6 +163,9 @@ class StatCard(ctk.CTkFrame):
         self.value_label.configure(text=str(value))
 
 
+import winsound
+import glob
+
 class FESSApp(ctk.CTk):
     """
     Professional GUI Application for Falcon Eye Security System
@@ -199,6 +202,14 @@ class FESSApp(ctk.CTk):
         self.armed = True
         self.last_alert_time = 0
         self.running = True
+        
+        # New Features State
+        self.sound_enabled = True
+        self.confidence_threshold = 0.6
+        self.alert_cooldown = ALERT_COOLDOWN
+        self.video_writer = None
+        self.recording_start_time = 0
+        self.is_recording = False
         
         # Statistics
         self.stats = {
@@ -325,23 +336,36 @@ class FESSApp(ctk.CTk):
         self.video_label = ctk.CTkLabel(self.video_frame, text="")
         self.video_label.pack(expand=True, fill="both", padx=2, pady=2)
         
-        # ========== RIGHT PANEL: CONTROL CENTER ==========
-        control_container = ctk.CTkScrollableFrame(
-            self,
-            fg_color="transparent",
-            scrollbar_button_color=Colors.BG_CARD_LIGHT,
-            scrollbar_button_hover_color=Colors.ACCENT_BLUE
-        )
-        control_container.grid(row=1, column=1, padx=(8, 15), pady=(15, 15), sticky="nsew")
+        # ========== RIGHT PANEL: CONTROL CENTER (TABVIEW) ==========
+        self.tab_view = ctk.CTkTabview(self, fg_color="transparent")
+        self.tab_view.grid(row=1, column=1, padx=(8, 15), pady=(0, 15), sticky="nsew")
+        
+        # Create Tabs
+        self.tab_controls = self.tab_view.add("Controls")
+        self.tab_gallery = self.tab_view.add("Gallery")
+        self.tab_settings = self.tab_view.add("Settings")
+        
+        # === TAB 1: CONTROLS ===
+        self.build_controls_tab(self.tab_controls)
+        
+        # === TAB 2: GALLERY ===
+        self.build_gallery_tab(self.tab_gallery)
+        
+        # === TAB 3: SETTINGS ===
+        self.build_settings_tab(self.tab_settings)
+
+    def build_controls_tab(self, parent):
+        """Build the main control panel"""
+        parent.grid_columnconfigure(0, weight=1)
         
         # === SYSTEM STATUS SECTION ===
-        self.create_section_header(control_container, "⚡ SYSTEM STATUS")
+        self.create_section_header(parent, "⚡ SYSTEM STATUS")
         
-        status_grid = ctk.CTkFrame(control_container, fg_color="transparent")
+        status_grid = ctk.CTkFrame(parent, fg_color="transparent")
         status_grid.pack(fill="x", pady=(0, 20))
         status_grid.grid_columnconfigure((0, 1), weight=1)
         
-        # Armed Status Badge (Auto-Armed)
+        # Armed Status Badge
         self.armed_badge = StatusBadge(
             status_grid,
             icon="🛡️",
@@ -370,9 +394,9 @@ class FESSApp(ctk.CTk):
         )
         
         # === STATISTICS SECTION ===
-        self.create_section_header(control_container, "📊 STATISTICS")
+        self.create_section_header(parent, "📊 STATISTICS")
         
-        stats_container = ctk.CTkFrame(control_container, fg_color="transparent")
+        stats_container = ctk.CTkFrame(parent, fg_color="transparent")
         stats_container.pack(fill="x", pady=(0, 20))
         stats_container.grid_columnconfigure((0, 1), weight=1)
         
@@ -414,9 +438,9 @@ class FESSApp(ctk.CTk):
         self.stat_alerts.grid(row=1, column=1, sticky="ew", padx=(5, 0), pady=0)
         
         # === CONTROL SECTION ===
-        self.create_section_header(control_container, "🎮 CONTROLS")
+        self.create_section_header(parent, "🎮 CONTROLS")
         
-        controls_frame = ctk.CTkFrame(control_container, fg_color="transparent")
+        controls_frame = ctk.CTkFrame(parent, fg_color="transparent")
         controls_frame.pack(fill="x", pady=(0, 20))
         
         # ARM Button
@@ -447,12 +471,26 @@ class FESSApp(ctk.CTk):
             corner_radius=12,
             command=self.disarm_system
         )
-        self.disarm_button.pack(fill="x")
+        self.disarm_button.pack(fill="x", pady=(0, 12))
+        
+        # EXIT Button
+        self.exit_button = ctk.CTkButton(
+            controls_frame,
+            text="🚪  EXIT APP",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            height=40,
+            fg_color=Colors.BG_CARD,
+            hover_color="#37474F",
+            text_color=Colors.TEXT_SECONDARY,
+            corner_radius=12,
+            command=self.on_closing
+        )
+        self.exit_button.pack(fill="x")
         
         # === ACTIVITY LOG SECTION ===
-        self.create_section_header(control_container, "📋 ACTIVITY LOG")
+        self.create_section_header(parent, "📋 ACTIVITY LOG")
         
-        log_frame = ctk.CTkFrame(control_container, fg_color=Colors.BG_CARD, corner_radius=10)
+        log_frame = ctk.CTkFrame(parent, fg_color=Colors.BG_CARD, corner_radius=10)
         log_frame.pack(fill="both", expand=True)
         
         # Log Box
@@ -477,7 +515,110 @@ class FESSApp(ctk.CTk):
         
         # Auto-armed notification
         self.add_log("🚀 System Auto-Started & Armed - Active monitoring enabled", "warning")
-    
+
+    def build_gallery_tab(self, parent):
+        """Build the Gallery Tab"""
+        parent.grid_columnconfigure(0, weight=1)
+        parent.grid_rowconfigure(0, weight=1)
+        
+        self.gallery_frame = ctk.CTkScrollableFrame(parent, fg_color="transparent")
+        self.gallery_frame.grid(row=0, column=0, sticky="nsew")
+        
+        self.refresh_gallery_button = ctk.CTkButton(
+            parent,
+            text="🔄 Refresh Gallery",
+            command=self.load_gallery_images
+        )
+        self.refresh_gallery_button.grid(row=1, column=0, pady=10)
+        
+        self.load_gallery_images()
+
+    def load_gallery_images(self):
+        """Load images from logs directory into gallery"""
+        # Clear existing
+        for widget in self.gallery_frame.winfo_children():
+            widget.destroy()
+            
+        # Find images
+        images = sorted(glob.glob(str(LOGS_DIR / "*.jpg")), reverse=True)[:20] # Show last 20
+        
+        if not images:
+            ctk.CTkLabel(self.gallery_frame, text="No alerts yet.").pack(pady=20)
+            return
+
+        for img_path in images:
+            try:
+                # Load and resize thumbnail
+                pil_img = Image.open(img_path)
+                pil_img.thumbnail((250, 200))
+                ctk_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=pil_img.size)
+                
+                # Create card
+                card = ctk.CTkFrame(self.gallery_frame, fg_color=Colors.BG_CARD_LIGHT)
+                card.pack(pady=5, padx=5, fill="x")
+                
+                label = ctk.CTkLabel(card, image=ctk_img, text="")
+                label.pack(pady=5)
+                
+                name = Path(img_path).name
+                ctk.CTkLabel(card, text=name, font=ctk.CTkFont(size=10)).pack(pady=(0,5))
+            except Exception as e:
+                logger.error(f"Failed to load gallery image {img_path}: {e}")
+
+    def build_settings_tab(self, parent):
+        """Build the Settings Tab"""
+        parent.grid_columnconfigure(0, weight=1)
+        
+        self.create_section_header(parent, "🔊 AUDIO ALARM")
+        
+        self.sound_switch = ctk.CTkSwitch(
+            parent,
+            text="Enable Siren Sound",
+            command=self.toggle_sound,
+            onvalue=True,
+            offvalue=False
+        )
+        self.sound_switch.select()
+        self.sound_switch.pack(pady=10, anchor="w", padx=20)
+        
+        self.create_section_header(parent, "⚙️ SENSITIVITY")
+        
+        ctk.CTkLabel(parent, text="Confidence Threshold").pack(anchor="w", padx=20)
+        self.conf_slider = ctk.CTkSlider(
+            parent,
+            from_=0.1,
+            to=1.0,
+            number_of_steps=9,
+            command=self.update_conf
+        )
+        self.conf_slider.set(self.confidence_threshold)
+        self.conf_slider.pack(fill="x", padx=20, pady=(0, 20))
+        
+        ctk.CTkLabel(parent, text="Alert Cooldown (Seconds)").pack(anchor="w", padx=20)
+        self.cooldown_slider = ctk.CTkSlider(
+            parent,
+            from_=5,
+            to=60,
+            number_of_steps=11,
+            command=self.update_cooldown
+        )
+        self.cooldown_slider.set(self.alert_cooldown)
+        self.cooldown_slider.pack(fill="x", padx=20, pady=(0, 20))
+
+    def toggle_sound(self):
+        self.sound_enabled = self.sound_switch.get()
+        self.add_log(f"Sound Alarm {'Enabled' if self.sound_enabled else 'Disabled'}", "info")
+
+    def update_conf(self, value):
+        self.confidence_threshold = value
+        # Update config constant if possible, or just use instance var
+        # Note: detector uses config constant, so we might need to pass it
+        self.add_log(f"Confidence Threshold set to {value:.1f}", "info")
+
+    def update_cooldown(self, value):
+        self.alert_cooldown = int(value)
+        self.add_log(f"Alert Cooldown set to {int(value)}s", "info")
+
     def create_section_header(self, parent, text):
         """Create a styled section header"""
         header_frame = ctk.CTkFrame(parent, fg_color="transparent", height=40)
@@ -564,6 +705,7 @@ class FESSApp(ctk.CTk):
         
         if frame is not None:
             # Process frame
+            # Pass dynamic confidence if detector supports it, otherwise it uses default
             processed_frame, detections, status = self.detector.detect_frame(frame, ROI_POINTS)
             
             # Handle detections
@@ -601,6 +743,11 @@ class FESSApp(ctk.CTk):
             2,
             cv2.LINE_AA
         )
+        
+        # Recording Indicator
+        if self.is_recording:
+            cv2.circle(frame, (w - 300, 30), 10, (0, 0, 255), -1)
+            cv2.putText(frame, "REC", (w - 280, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
         
         # Timestamp
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -641,10 +788,22 @@ class FESSApp(ctk.CTk):
             logger.debug(f"CRITICAL status detected! Armed={self.armed}")
             
             if self.armed:
-                time_since_last = current_time - self.last_alert_time
-                logger.debug(f"Time since last alert: {time_since_last:.1f}s (Cooldown: {ALERT_COOLDOWN}s)")
+                # 1. Sound Alarm
+                if self.sound_enabled:
+                    try:
+                        winsound.PlaySound("siren.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
+                    except Exception:
+                        pass
+
+                # 2. Video Recording Logic
+                if not self.is_recording:
+                    self.start_recording(frame)
                 
-                if time_since_last > ALERT_COOLDOWN:
+                # 3. Telegram Alert
+                time_since_last = current_time - self.last_alert_time
+                logger.debug(f"Time since last alert: {time_since_last:.1f}s (Cooldown: {self.alert_cooldown}s)")
+                
+                if time_since_last > self.alert_cooldown:
                     self.add_log("🚨 Sending Telegram alert with evidence photo...", "critical")
                     logger.warning("CRITICAL SECURITY BREACH DETECTED!")
                     
@@ -662,11 +821,46 @@ class FESSApp(ctk.CTk):
                     self.stat_alerts.update_value(self.stats['alerts_sent'])
                     
                     self.last_alert_time = current_time
+                    
+                    # Refresh gallery
+                    self.load_gallery_images()
                 else:
-                    remaining = ALERT_COOLDOWN - time_since_last
+                    remaining = self.alert_cooldown - time_since_last
                     logger.debug(f"Alert on cooldown. Wait {remaining:.1f}s more")
             else:
                 logger.debug("Alert NOT sent: System is DISARMED")
+        
+        # Stop recording if safe
+        if status != "CRITICAL" and self.is_recording:
+            # Record for at least 5 seconds
+            if current_time - self.recording_start_time > 5:
+                self.stop_recording()
+        
+        # Write frame if recording
+        if self.is_recording and self.video_writer:
+            self.video_writer.write(frame)
+
+    def start_recording(self, frame):
+        """Start video recording"""
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = LOGS_DIR / f"evidence_{timestamp}.avi"
+            h, w = frame.shape[:2]
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            self.video_writer = cv2.VideoWriter(str(filename), fourcc, 20.0, (w, h))
+            self.is_recording = True
+            self.recording_start_time = time.time()
+            self.add_log("🎥 Video recording started...", "warning")
+        except Exception as e:
+            logger.error(f"Failed to start recording: {e}")
+
+    def stop_recording(self):
+        """Stop video recording"""
+        if self.video_writer:
+            self.video_writer.release()
+            self.video_writer = None
+        self.is_recording = False
+        self.add_log("🎥 Video recording saved.", "success")
     
     def display_frame(self, frame):
         """Convert and display frame with professional styling"""
@@ -697,10 +891,17 @@ class FESSApp(ctk.CTk):
     def on_closing(self):
         """Clean shutdown"""
         logger.info("Shutting down FESS Professional Dashboard...")
-        self.add_log("Initiating system shutdown...", "warning")
-        
+        try:
+            self.add_log("Initiating system shutdown...", "warning")
+        except:
+            pass
+            
         self.running = False
         self.bot.running = False
+        
+        if self.video_writer:
+            self.video_writer.release()
+            
         time.sleep(0.5)
         
         self.camera.release()
