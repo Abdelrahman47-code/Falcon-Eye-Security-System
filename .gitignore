@@ -45,3 +45,7 @@ logs/
 requirements_no_dlib.txt
 create_siren.py
 run.bat
+
+# Privacy and Binaries
+known_faces/
+*.whl
