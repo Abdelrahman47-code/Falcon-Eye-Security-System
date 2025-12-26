@@ -52,6 +52,9 @@ class ThreadedCamera:
     def __init__(self, src=0):
         self.src = src
         self.capture = cv2.VideoCapture(src)
+        # Attempt to use HD resolution (16:9) to better fill modern screens
+        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         self.q = queue.Queue(maxsize=2)
         self.running = True
         self.thread = threading.Thread(target=self._reader, daemon=True)
@@ -190,6 +193,10 @@ class FESSApp(ctk.CTk):
         
         # Set geometry with centered position
         self.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
+        # Start maximized
+        # self.after(0, lambda: self.state('zoomed'))
+        self.bind("<Escape>", lambda e: self.attributes("-fullscreen", False))
+
         
         # Set Dark Theme with custom colors
         ctk.set_appearance_mode("dark")
@@ -223,9 +230,12 @@ class FESSApp(ctk.CTk):
         logger.info("Initializing Professional GUI Dashboard...")
         
         try:
+            print("DEBUG: Initializing initialization of Object Detector...")
             self.detector = ObjectDetector()
+            print("DEBUG: Object Detector initialized successfully.")
         except Exception as e:
             logger.critical(f"Failed to initialize Detector: {e}")
+            print(f"DEBUG: Detector failed: {e}")
             self.show_error_and_exit("Detector initialization failed")
             return
         
@@ -243,19 +253,24 @@ class FESSApp(ctk.CTk):
         # Build UI
         self.build_ui()
         
-        # Start Video Loop
-        self.update_frame()
+        # Start Video Loop - REMOVED from here, moved to start_system()
+        # self.update_frame()
         
         # Handle Window Close
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         logger.info("✅ Professional FESS Dashboard Ready")
     
+    def start_system(self):
+        """Starts the video processing loop after login"""
+        self.update_frame()
+
     def show_error_and_exit(self, message):
         """Show error dialog and exit"""
         import tkinter.messagebox as mb
         mb.showerror("Fatal Error", message)
         self.quit()
+
     
     def build_ui(self):
         """Construct the Professional GUI Layout"""
@@ -304,7 +319,8 @@ class FESSApp(ctk.CTk):
         
         # ========== LEFT PANEL: VIDEO FEED ==========
         video_container = ctk.CTkFrame(self, fg_color="transparent")
-        video_container.grid(row=1, column=0, padx=(15, 8), pady=(15, 15), sticky="nsew")
+        # Reduced padding to maximize video size
+        video_container.grid(row=1, column=0, padx=(5, 5), pady=(5, 5), sticky="nsew")
         video_container.grid_rowconfigure(1, weight=1)
         video_container.grid_columnconfigure(0, weight=1)
         
@@ -334,7 +350,7 @@ class FESSApp(ctk.CTk):
         self.video_frame.grid(row=1, column=0, sticky="nsew")
         
         self.video_label = ctk.CTkLabel(self.video_frame, text="")
-        self.video_label.pack(expand=True, fill="both", padx=2, pady=2)
+        self.video_label.pack(expand=True, fill="both", padx=0, pady=0)
         
         # ========== RIGHT PANEL: CONTROL CENTER (TABVIEW) ==========
         self.tab_view = ctk.CTkTabview(self, fg_color="transparent")
@@ -603,7 +619,61 @@ class FESSApp(ctk.CTk):
             command=self.update_cooldown
         )
         self.cooldown_slider.set(self.alert_cooldown)
+        self.cooldown_slider.set(self.alert_cooldown)
         self.cooldown_slider.pack(fill="x", padx=20, pady=(0, 20))
+
+        # --- NEW: Add Face Section ---
+        self.create_section_header(parent, "👤 ADD AUTHORIZED PERSON")
+        
+        input_frame = ctk.CTkFrame(parent, fg_color="transparent")
+        input_frame.pack(fill="x", padx=20, pady=5)
+        
+        self.new_person_name = ctk.CTkEntry(input_frame, placeholder_text="Enter Name (e.g. John)")
+        self.new_person_name.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        
+        ctk.CTkButton(
+            input_frame, 
+            text="📷 Capture & Add", 
+            width=100,
+            command=self.capture_new_face
+        ).pack(side="right")
+        
+        ctk.CTkLabel(parent, text="* Stand in front of camera and look straight", font=ctk.CTkFont(size=10), text_color=Colors.TEXT_MUTED).pack(anchor="w", padx=25)
+
+    def capture_new_face(self):
+        """Captures the current frame and adds it to known faces"""
+        name = self.new_person_name.get().strip()
+        if not name:
+            self.add_log("Please enter a name first.", "warning")
+            return
+            
+        frame = self.camera.read()
+        if frame is None:
+            self.add_log("Camera error - cannot capture.", "critical")
+            return
+            
+        # Detect Face (Reuse detector logic or just save full frame and let face_auth handle crop)
+        # Using full frame is safer as face_auth handles finding the face.
+        
+        try:
+            filename = f"{name}.jpg"
+            filepath = LOGS_DIR.parent / "known_faces" / filename
+            
+            # Save Image
+            cv2.imwrite(str(filepath), frame)
+            
+            self.add_log(f"Saved photo for {name}.", "success")
+            
+            # Refresh Authenticator
+            self.detector.face_auth.refresh_faces()
+            self.add_log(f"Database updated. {name} is now Authorized.", "success")
+            
+            # Clear input
+            self.new_person_name.delete(0, 'end')
+            
+        except Exception as e:
+            logger.error(f"Failed to add face: {e}")
+            self.add_log(f"Error adding face: {e}", "critical")
 
     def toggle_sound(self):
         self.sound_enabled = self.sound_switch.get()
@@ -697,28 +767,34 @@ class FESSApp(ctk.CTk):
         """Main video update loop"""
         if not self.running:
             return
-        
-        # Update time
-        self.time_label.configure(text=datetime.now().strftime("%H:%M:%S"))
-        
-        frame = self.camera.read()
-        
-        if frame is not None:
-            # Process frame
-            # Pass dynamic confidence if detector supports it, otherwise it uses default
-            processed_frame, detections, status = self.detector.detect_frame(frame, ROI_POINTS)
             
-            # Handle detections
-            self.handle_detections(detections, status, processed_frame)
+        try:
+            # Update time
+            self.time_label.configure(text=datetime.now().strftime("%H:%M:%S"))
             
-            # Enhanced status overlay
-            self.draw_enhanced_overlay(processed_frame)
+            frame = self.camera.read()
             
-            # Display frame
-            self.display_frame(processed_frame)
+            if frame is not None:
+                # Process frame
+                # Pass dynamic confidence if detector supports it, otherwise it uses default
+                processed_frame, detections, status = self.detector.detect_frame(frame, ROI_POINTS)
+                
+                # Handle detections
+                self.handle_detections(detections, status, processed_frame)
+                
+                # Enhanced status overlay
+                self.draw_enhanced_overlay(processed_frame)
+                
+                # Display frame
+                self.display_frame(processed_frame)
+                
+        except Exception as e:
+            logger.error(f"Error in update_frame loop: {e}")
+            # Don't crash, just log and continue
         
         # Schedule next update
-        self.after(10, self.update_frame)
+        if self.running:
+            self.after(10, self.update_frame)
     
     def draw_enhanced_overlay(self, frame):
         """Draw professional status overlay on video"""
@@ -798,7 +874,7 @@ class FESSApp(ctk.CTk):
                 # 2. Video Recording Logic
                 if not self.is_recording:
                     self.start_recording(frame)
-                
+    
                 # 3. Telegram Alert
                 time_since_last = current_time - self.last_alert_time
                 logger.debug(f"Time since last alert: {time_since_last:.1f}s (Cooldown: {self.alert_cooldown}s)")
@@ -841,90 +917,138 @@ class FESSApp(ctk.CTk):
             self.video_writer.write(frame)
 
     def start_recording(self, frame):
-        """Start video recording"""
-        try:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = LOGS_DIR / f"evidence_{timestamp}.avi"
-            h, w = frame.shape[:2]
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            self.video_writer = cv2.VideoWriter(str(filename), fourcc, 20.0, (w, h))
-            self.is_recording = True
-            self.recording_start_time = time.time()
-            self.add_log("🎥 Video recording started...", "warning")
-        except Exception as e:
-            logger.error(f"Failed to start recording: {e}")
+        """Start recording video clip"""
+        self.is_recording = True
+        self.recording_start_time = time.time()
+        
+        # Create filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = LOGS_DIR / f"alert_{timestamp}.avi"
+        
+        # Initialize Writer (XVID)
+        h, w = frame.shape[:2]
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        self.video_writer = cv2.VideoWriter(str(filename), fourcc, 20.0, (w, h))
+        
+        self.add_log(f"Started recording evidence...", "warning")
+        logger.info(f"Started recording: {filename}")
 
     def stop_recording(self):
-        """Stop video recording"""
-        if self.video_writer:
-            self.video_writer.release()
-            self.video_writer = None
-        self.is_recording = False
-        self.add_log("🎥 Video recording saved.", "success")
-    
+        """Stop recording video"""
+        if self.is_recording:
+            self.is_recording = False
+            if self.video_writer:
+                self.video_writer.release()
+                self.video_writer = None
+            self.add_log("Evidence recording saved.", "success")
+            logger.info("Recording stopped.")
+
     def display_frame(self, frame):
-        """Convert and display frame with professional styling"""
+        """Convert cv2 frame to ctk image and display"""
+        # Convert BGR to RGB
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        # Convert to PIL
         pil_image = Image.fromarray(rgb_frame)
         
-        label_width = self.video_label.winfo_width()
-        label_height = self.video_label.winfo_height()
+        # Resize to fit frame (maintain aspect ratio)
+        display_w = self.video_frame.winfo_width()
+        display_h = self.video_frame.winfo_height()
         
-        if label_width > 1 and label_height > 1:
-            img_width, img_height = pil_image.size
-            scale_w = label_width / img_width
-            scale_h = label_height / img_height
-            scale = min(scale_w, scale_h) * 0.98
+        if display_w > 10 and display_h > 10:
+            # ROI: Use resize instead of thumbnail to STRICTLY fill the allocated space
+            # This ensures no black bars, complying with user request for "bigger"
+            # pil_image = pil_image.resize((display_w, display_h), Image.Resampling.LANCZOS)
+            frame_h, frame_w = rgb_frame.shape[:2]
+            frame_ratio = frame_w / frame_h
+            widget_ratio = display_w / display_h
+
+            if frame_ratio > widget_ratio:
+                new_w = display_w
+                new_h = int(display_w / frame_ratio)
+            else:
+                new_h = display_h
+                new_w = int(display_h * frame_ratio)
+
+            pil_image = pil_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
             
-            new_width = int(img_width * scale)
-            new_height = int(img_height * scale)
-            
-            ctk_image = ctk.CTkImage(
-                light_image=pil_image,
-                dark_image=pil_image,
-                size=(new_width, new_height)
-            )
-            
-            self.video_label.configure(image=ctk_image)
-            self.video_label.image = ctk_image
-    
+        # Convert to CTK Image
+        ctk_image = ctk.CTkImage(light_image=pil_image, dark_image=pil_image, size=pil_image.size)
+        
+        self.video_label.configure(image=ctk_image)
+        self.video_label.image = ctk_image # Keep reference due to GC
+        
+        # Check recording duration (e.g., 10 seconds max)
+        if self.is_recording and (time.time() - self.recording_start_time > 10):
+            self.stop_recording()
+
     def on_closing(self):
         """Clean shutdown"""
-        logger.info("Shutting down FESS Professional Dashboard...")
-        try:
-            self.add_log("Initiating system shutdown...", "warning")
-        except:
-            pass
-            
+        logger.info("Closing application...")
         self.running = False
-        self.bot.running = False
-        
+        self.camera.release()
         if self.video_writer:
             self.video_writer.release()
-            
-        time.sleep(0.5)
         
-        self.camera.release()
-        logger.info("✅ Shutdown complete")
+        # Stop bot logic if needed
+        # self.bot.stop() # Bot runs in daemon thread, will die with process
+        
+        self.destroy()
+        logger.info("Application closed.")
+
+# --- NEW: PIN Dialog Class ---
+class PinDialog(ctk.CTkToplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Security Check")
+        self.geometry("300x200")
+        self.resizable(False, False)
+        
+        # Center dialog
+        self.transient(parent)
+        self.grab_set()
+        
+        ctk.CTkLabel(self, text="🔒 Enter System PIN", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=20)
+        
+        self.pin_entry = ctk.CTkEntry(self, show="*", width=200, justify="center")
+        self.pin_entry.pack(pady=10)
+        self.pin_entry.focus()
+        
+        self.submit_btn = ctk.CTkButton(self, text="Unlock", command=self.check_pin)
+        self.submit_btn.pack(pady=10)
+        
+        self.success = False
+        
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def check_pin(self):
+        # HARDCODED PIN FOR DEMO (You can move this to .env)
+        # For real secure app, hash this.
+        if self.pin_entry.get() == "1234":
+            self.success = True
+            self.destroy()
+        else:
+            self.pin_entry.configure(border_color=Colors.CRITICAL)
+            self.pin_entry.delete(0, 'end')
+
+    def on_close(self):
         self.destroy()
 
-
-def main():
-    """Entry point for FESS Professional Dashboard"""
-    logger.info("=" * 70)
-    logger.info("Starting Falcon Eye Security System - Professional Dashboard")
-    logger.info("=" * 70)
-    
-    try:
-        app = FESSApp()
-        app.mainloop()
-    except KeyboardInterrupt:
-        logger.info("User interrupted system")
-    except Exception as e:
-        logger.exception(f"Fatal error: {e}")
-    finally:
-        logger.info("FESS Terminated")
-
-
 if __name__ == "__main__":
-    main()
+    app = FESSApp()
+    app.withdraw()
+
+    def show_pin_dialog():
+        dialog = PinDialog(app)
+        app.wait_window(dialog)
+
+        if dialog.success:
+            app.deiconify()
+            app.state('zoomed')
+            app.after(200, app.start_system)
+        else:
+            app.destroy()
+
+    app.after(300, show_pin_dialog)
+    app.mainloop()

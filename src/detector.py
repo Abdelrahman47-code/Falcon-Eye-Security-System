@@ -21,7 +21,7 @@ class ObjectDetector:
         # Optimization: Cache identities for Track IDs
         self.identity_map = {} # {track_id: {'name': str, 'last_checked': int}}
         self.frame_count = 0
-        self.face_check_interval = 10 # Run face check every 10 frames per object
+        self.face_check_interval = 5 # Faster check (every 5 frames) for better responsiveness
 
     def detect_frame(self, frame, roi_points):
         """
@@ -73,34 +73,34 @@ class ObjectDetector:
                 # --- FACE RECOGNITION LOGIC ---
                 name = "Unknown"
                 
-                if is_inside:
-                    # Only check face if inside ROI (Optimization)
-                    
-                    # Check if we need to run recognition
-                    should_check = False
-                    if track_id != -1:
-                        if track_id not in self.identity_map:
-                            should_check = True
-                        elif (self.frame_count - self.identity_map[track_id]['last_checked']) > self.face_check_interval:
-                            should_check = True
-                            
-                        # If we already know them, retrieve name
-                        if not should_check:
-                            name = self.identity_map[track_id]['name']
-                    else:
-                        # No track ID (rare with persist=True), always check
+                # PROACTIVE DETECTION: Check faces EVERYWHERE, not just inside ROI.
+                # This ensures we know who they are before they enter the restricted zone.
+                
+                # Check if we need to run recognition
+                should_check = False
+                if track_id != -1:
+                    if track_id not in self.identity_map:
                         should_check = True
-                    
-                    if should_check:
-                        # Run Face Auth
-                        name = self.face_auth.identify_face(frame, (x1, y1, x2, y2))
+                    elif (self.frame_count - self.identity_map[track_id]['last_checked']) > self.face_check_interval:
+                        should_check = True
                         
-                        # Update Cache
-                        if track_id != -1:
-                            self.identity_map[track_id] = {
-                                'name': name,
-                                'last_checked': self.frame_count
-                            }
+                    # If we already know them, retrieve name
+                    if not should_check:
+                        name = self.identity_map[track_id]['name']
+                else:
+                    # No track ID (rare with persist=True), always check
+                    should_check = True
+                
+                if should_check:
+                    # Run Face Auth
+                    name = self.face_auth.identify_face(frame, (x1, y1, x2, y2))
+                    
+                    # Update Cache
+                    if track_id != -1:
+                        self.identity_map[track_id] = {
+                            'name': name,
+                            'last_checked': self.frame_count
+                        }
                 
                 # --- STATUS DETERMINATION ---
                 status = "WARNING"

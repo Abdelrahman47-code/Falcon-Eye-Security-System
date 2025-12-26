@@ -1,0 +1,16 @@
+name: fess
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - dlib
+  - pip
+  - pip:
+    - face_recognition
+    - opencv-python
+    - ultralytics
+    - customtkinter
+    - loguru
+    - python-dotenv
+    - python-telegram-bot

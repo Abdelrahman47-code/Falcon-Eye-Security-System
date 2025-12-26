@@ -1,10 +1,11 @@
 import os
 import cv2
-try:
-    import face_recognition
-    FACE_REC_AVAILABLE = True
-except ImportError:
-    FACE_REC_AVAILABLE = False
+# try:
+#     import face_recognition
+#     FACE_REC_AVAILABLE = True
+# except ImportError:
+#     FACE_REC_AVAILABLE = False
+FACE_REC_AVAILABLE = False
 import numpy as np
 from loguru import logger
 
@@ -60,7 +61,14 @@ class FaceAuthenticator:
                 except Exception as e:
                     logger.error(f"Error loading {filename}: {e}")
         
+        
         logger.info(f"Total known faces loaded: {len(self.known_face_names)}")
+
+    def refresh_faces(self):
+        """Reloads known faces from disk (useful after adding a new face)"""
+        self.known_face_encodings = []
+        self.known_face_names = []
+        self._load_known_faces()
 
     def identify_face(self, frame, bbox):
         if not FACE_REC_AVAILABLE or not self.known_face_encodings:

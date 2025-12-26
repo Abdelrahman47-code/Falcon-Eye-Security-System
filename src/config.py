@@ -36,6 +36,13 @@ if not TELEGRAM_TOKEN or TELEGRAM_TOKEN == "your_token_here":
 if not CHAT_ID or CHAT_ID == "your_chat_id_here":
     logger.warning("CHAT_ID is missing or invalid in .env. Alerts cannot be sent.")
 
+# Telegram Security (Comma-separated list of Telegram User IDs allowed to control the bot)
+ALLOWED_TELEGRAM_IDS = [int(x.strip()) for x in os.getenv("ALLOWED_TELEGRAM_IDS", "").split(",") if x.strip().isdigit()]
+
+if not ALLOWED_TELEGRAM_IDS:
+    logger.warning("ALLOWED_TELEGRAM_IDS is empty. Bot might be insecure or commands restricted.")
+
+
 # Detection Config
 CONFIDENCE_THRESHOLD = 0.6
 ALERT_COOLDOWN = 30  # Seconds
@@ -44,8 +51,9 @@ MODEL_PATH = "yolov8n.pt"
 # ROI Config (Normalized 0-1: x, y)
 # Default: A central rectangular area
 ROI_POINTS = [
-    (0.2, 0.2), # Top-Left
-    (0.8, 0.2), # Top-Right
-    (0.8, 0.8), # Bottom-Right
-    (0.2, 0.8)  # Bottom-Left
+    (0.55, 0.35),  # Top-Left
+    (0.90, 0.35),  # Top-Right
+    (0.90, 0.75),  # Bottom-Right
+    (0.55, 0.75)   # Bottom-Left
 ]
+
