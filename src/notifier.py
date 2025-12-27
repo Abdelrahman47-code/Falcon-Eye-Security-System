@@ -71,8 +71,7 @@ class TelegramBot:
         self.application.add_handler(CommandHandler("arm", self.arm_command))
         self.application.add_handler(CommandHandler("disarm", self.disarm_command))
 
-        # Manual Lifecycle: Initialize -> Start -> Start Polling
-        # This allows us to keep the loop open for other tasks (like sending alerts)
+        # Manual Lifecycle: Initialize -> Start -> Start Polling  to keep the loop open for other tasks
         await self.application.initialize()
         await self.application.start()
         
@@ -89,20 +88,6 @@ class TelegramBot:
             await self.application.stop()
             await self.application.shutdown()
 
-    # --- Command Handlers ---
-
-    def _is_authorized(self, update: Update) -> bool:
-        user_id = update.effective_user.id
-        if not ALLOWED_TELEGRAM_IDS:
-            # If whitelist is empty, we warn but allow (or deny? Safe default is deny)
-            # But per user request, we want security so let's log warning
-            return True # Logic: if config is empty, maybe they didn't set it up yet. 
-                        # Ideally should be False, but for smooth dev exp if they forget, 
-                        # we might want to allow. However, user ASKED for security.
-                        # Let's check if the ID is in list.
-            pass 
-        
-        return user_id in ALLOWED_TELEGRAM_IDS
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ALLOWED_TELEGRAM_IDS and update.effective_user.id not in ALLOWED_TELEGRAM_IDS:
@@ -137,7 +122,6 @@ class TelegramBot:
         logger.info(f"System Disarmed via Telegram by {update.effective_user.first_name}")
 
     # --- Alert Logic ---
-
     async def _send_alert_coroutine(self, image_path, message):
         """The actual async function that sends the photo."""
         try:

@@ -49,11 +49,10 @@ ALERT_COOLDOWN = 30  # Seconds
 MODEL_PATH = "yolov8n-pose.pt" 
 
 # ROI Config (Normalized 0-1: x, y)
-# Default: A central rectangular area
 ROI_POINTS = [
-    (0.60, 0.2),  # Top-Left
+    (0.50, 0.2),  # Top-Left
     (0.90, 0.2),  # Top-Right
-    (0.90, 0.7),  # Bottom-Right
-    (0.60, 0.7)   # Bottom-Left
+    (0.90, 0.85),  # Bottom-Right
+    (0.50, 0.85)   # Bottom-Left
 ]
 
