@@ -170,3 +170,5 @@ class TelegramBot:
             )
         else:
             logger.warning("Telegram Bot loop is not running. Alert skipped.")
+
+TelegramNotifier = TelegramBot

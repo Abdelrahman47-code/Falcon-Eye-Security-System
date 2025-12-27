@@ -1,24 +1,30 @@
 import os
 import cv2
-# try:
-#     import face_recognition
-#     FACE_REC_AVAILABLE = True
-# except ImportError:
-#     FACE_REC_AVAILABLE = False
-FACE_REC_AVAILABLE = False
 import numpy as np
 from loguru import logger
+import pickle
+
+# Force Disable Face Recognition to resolve startup crash
+FACE_REC_AVAILABLE = False
+face_recognition = None
 
 class FaceAuthenticator:
     def __init__(self):
         self.known_face_encodings = []
         self.known_face_names = []
-        if FACE_REC_AVAILABLE:
-            self._load_known_faces()
-        else:
-            logger.warning("Face Recognition library not installed.")
+        logger.warning("Face Recognition is DISABLED via code.")
+
+    def _load_library(self):
+        pass
 
     def _load_known_faces(self):
+        pass
+
+    def refresh_faces(self):
+        pass
+
+    def identify_face(self, frame, bbox):
+        return "Unknown"
         logger.info("Loading known faces from known_faces...")
         if not os.path.exists("known_faces"):
             os.makedirs("known_faces")

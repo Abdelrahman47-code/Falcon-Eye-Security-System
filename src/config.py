@@ -46,14 +46,14 @@ if not ALLOWED_TELEGRAM_IDS:
 # Detection Config
 CONFIDENCE_THRESHOLD = 0.6
 ALERT_COOLDOWN = 30  # Seconds
-MODEL_PATH = "yolov8n.pt" 
+MODEL_PATH = "yolov8n-pose.pt" 
 
 # ROI Config (Normalized 0-1: x, y)
 # Default: A central rectangular area
 ROI_POINTS = [
-    (0.55, 0.35),  # Top-Left
-    (0.90, 0.35),  # Top-Right
-    (0.90, 0.75),  # Bottom-Right
-    (0.55, 0.75)   # Bottom-Left
+    (0.60, 0.2),  # Top-Left
+    (0.90, 0.2),  # Top-Right
+    (0.90, 0.7),  # Bottom-Right
+    (0.60, 0.7)   # Bottom-Left
 ]
 
